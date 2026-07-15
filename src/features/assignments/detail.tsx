@@ -1,8 +1,9 @@
 import { Box, Grid, List, ListItem, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { assignmentServices } from "../../services";
 import { shipmentServices } from "../../services/shipments";
 import { Assignment, Shipment } from "../../store/models";
+import ShipmentDetailModal from "../shipments/detail";
 
 const modalStyle = {
   position: "absolute",
@@ -40,6 +41,7 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
   const [data, setData] = useState<Assignment | null>(null);
   const [assignedList, setAssignedList] = useState<Shipment[]>([]);
   const [totalAssigned, setTotalAssigned] = useState<number>(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fetchData = async (id: string | null) => {
     if (id) {
@@ -58,6 +60,10 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
       }
     }
   };
+
+  const allShipmentCords = useMemo<[number, number][]>(() => {
+    return assignedList.map(shipment => ([shipment.lat, shipment.lng]));
+  }, [assignedList]);
 
   useEffect(() => {
     if (id !== null) fetchData(id);
@@ -96,6 +102,7 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
                                     hover
                                     key={row.id}
                                     sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
+                                    onClick={() => setSelectedId(row.id)}
                                   >
                                     <TableCell>{row.label}</TableCell>
                                     <TableCell>{row.status}</TableCell>
@@ -114,6 +121,13 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
           </Stack>
         </Box >
       </Modal>
+      <ShipmentDetailModal
+        id={selectedId}
+        onClose={() => setSelectedId(null)}
+        forceReloadCb={() => {}}
+        readOnly={true}
+        shipmentCords={allShipmentCords}
+      />
     </>
   );
 };

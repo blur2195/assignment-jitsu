@@ -1,4 +1,4 @@
-import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemText, Menu, MenuItem, Modal, Stack, TextField } from "@mui/material";
+import { Box, Button, Grid, List, ListItem, Menu, MenuItem, Modal, Stack, TextField } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import L from "leaflet";
@@ -35,6 +35,14 @@ interface ShipmentDetailModalProps {
   id: string | null;
   onClose?: Function;
   forceReloadCb?: Function;
+  readOnly?: boolean;
+  shipmentCords?: [number, number][];
+}
+
+interface RecenterMapProps {
+  lat: number;
+  lng: number;
+  shipmentCords?: [number, number][];
 }
 
 const icon = L.icon({ iconUrl: "/images/marker.svg", iconSize: [30, 30] });
@@ -48,20 +56,34 @@ const CustomListItem = ({ title, children }: any) => {
   )
 };
 
-const RecenterAutomatically = ({ lat, lng }: any) => {
+const RecenterAutomatically = ({ lat, lng, shipmentCords }: RecenterMapProps) => {
   const map = useMap();
+
   useEffect(() => {
-    map.setView([lat, lng]);
-  }, [lat, lng]);
+    if (!shipmentCords?.length) {
+      map.setView([lat, lng], map.getZoom());
+      return;
+    }
+    shipmentCords?.map((cord) => {
+      L.marker(cord, { icon }).addTo(map);
+    });
+    const polyline = L.polyline(shipmentCords, { color: "lime" }).addTo(map);
+    map.dragging.disable();
+    map.fitBounds(polyline.getBounds(), {
+      padding: [50, 50],
+    });
+  }, [map, lat, lng, shipmentCords]);
+
   return null;
 };
 
-const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModalProps) => {
+const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCords }: ShipmentDetailModalProps) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [data, setData] = useState<Shipment | null>(null);
   const statusMenuOpen = Boolean(anchorEl);
+  const isReadOnly = Boolean(readOnly);
   const [assignOpen, setAssignOpen] = useState<boolean>(false);
   const [editableData, setEditableData] = useState<any>({
     lat: null,
@@ -186,17 +208,15 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
 
   return (
     <>
-      <Modal open={!!id} onClose={() => onClose && onClose()}>
+      <Modal open={!!id} onClose={() => onClose && onClose()} keepMounted={false}>
         <Box sx={modalStyle}>
           <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
-            <Grid container>
-              <Grid size={6} sx={{ display: "flex", alignItems: "center" }}>
-                <Box component={"h2"} sx={{ m: 0 }}>Shipment detail</Box>
-              </Grid>
-              <Grid size={6} sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+            <Stack direction={"row"}>
+              <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Shipment detail</Box>
+              {!isReadOnly && (
                 <Button variant="contained" loading={loading} onClick={handleSave}>Save</Button>
-              </Grid>
-            </Grid>
+              )}
+            </Stack>
             <Box sx={{ flex: 1, overflow: "auto" }}>
               {data && (
                 <>
@@ -208,7 +228,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
                     </ListItem>
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Status"}>
-                        <Button variant="outlined" onClick={handleClickStatusField}>
+                        <Button variant="outlined" onClick={handleClickStatusField} disabled={isReadOnly}>
                           {SHIPMENT_STATUS_OPTIONS
                             .find((option) => option.value === (data?.status || SHIPMENT_STATUS.OPEN))
                             ?.label
@@ -240,6 +260,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Delivery by date"}>
                         <DateTimePicker
+                          disabled={isReadOnly}
                           value={dayjs(editableData?.delivery_by_date)}
                           onChange={(value) => handleChangeInput("delivery_by_date", dayjs(value).toISOString())}
                         />
@@ -258,6 +279,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Latitude"}>
                         <TextField
+                          disabled={isReadOnly}
                           size="small"
                           value={editableData?.lat}
                           onChange={(e) => handleChangeInput("lat", e.target.value)}
@@ -267,6 +289,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Longitude"}>
                         <TextField
+                          disabled={isReadOnly}
                           size="small"
                           value={editableData?.lng}
                           onChange={(e) => handleChangeInput("lng", e.target.value)}
@@ -280,7 +303,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb }: ShipmentDetailModal
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                         <Marker position={[editableData?.lat, editableData?.lng]} icon={icon} />
-                        <RecenterAutomatically lat={editableData?.lat} lng={editableData?.lng} />
+                        <RecenterAutomatically lat={editableData?.lat} lng={editableData?.lng} shipmentCords={shipmentCords} />
                       </MapContainer>
                     </ListItem>
                   </List>
