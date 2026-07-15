@@ -26,30 +26,30 @@ const useFilter = (props: UseFilterProps = {
   const handleChangeInput = useCallback((name: string, value: any, immediate: boolean = false) => {
     handleChangeParams([
       ...(props.paging ? [
-        { name: 'page', value: DEFAULT_FIRST_PAGE }
+        { name: "page", value: DEFAULT_FIRST_PAGE }
       ] : []),
       { name, value },
-      { name: 'immediate', value: immediate },
+      { name: "immediate", value: immediate },
     ])
   }, [props.paging]);
 
   const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     handleChangeParams([
-      { name: 'page', value: newPage },
-      { name: 'immediate', value: true },
+      { name: "page", value: newPage },
+      { name: "immediate", value: true },
     ]);
   };
 
   const handlePageSizeChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     handleChangeParams([
-      { name: 'page', value: DEFAULT_FIRST_PAGE },
-      { name: 'pageSize', value: parseInt(event.target.value, 10) },
-      { name: 'immediate', value: true },
+      { name: "page", value: DEFAULT_FIRST_PAGE },
+      { name: "pageSize", value: parseInt(event.target.value, 10) },
+      { name: "immediate", value: true },
     ])
   }
 
   const handleChangeParams = (values: { name: string, value: any }[]) => {
-    const haveImmediate = values.some(item => item.name === 'immediate');
+    const haveImmediate = values.some(item => item.name === "immediate");
     setFilterParams((prev: any) => ({
       ...prev,
       ...values.reduce(

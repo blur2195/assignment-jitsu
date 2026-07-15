@@ -1,10 +1,10 @@
-import { SearchParams, ServiceResponse, Shipment } from "../store/models";
+import { SearchParams, ServiceResponse, Assignment } from "../store/models";
 import { convertParamsToQueryString } from "../utils";
 import axiosClient from "./axiosClient";
 
-const apiUrl = "/shipments";
-export const shipmentServices = {
-  async getAll(params?: SearchParams): Promise<ServiceResponse<Shipment>> {
+const apiUrl = "/assignments";
+export const assignmentServices = {
+  async getAll(params?: SearchParams): Promise<ServiceResponse<Assignment>> {
     const queryString = convertParamsToQueryString(params);
     const res = await axiosClient.get(`${apiUrl}?${queryString}`);
     return {
@@ -13,12 +13,12 @@ export const shipmentServices = {
     };
   },
 
-  async getById(id: string): Promise<Shipment> {
+  async getById(id: string): Promise<Assignment> {
     const res = await axiosClient.get(`${apiUrl}/${id}`);
     return res.data;
   },
 
-  async createShipment(params: any): Promise<any> {
+  async create(params: any): Promise<any> {
     const res = await axiosClient.post(`${apiUrl}`, params, {
       headers: {
         "Content-Type": "application/json",
@@ -39,10 +39,5 @@ export const shipmentServices = {
   async deleteById(id: string): Promise<any> {
     const res = await axiosClient.delete(`${apiUrl}/${id}`);
     return res.status;
-  },
-
-  async getByAssignmentId(id: string): Promise<Shipment[]> {
-    const res = await axiosClient.get(`${apiUrl}?assignment_id=${id}`);
-    return res.data;
   },
 }

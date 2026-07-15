@@ -1,9 +1,9 @@
 import { useState } from "react";
 import AddModal from "./add";
-import ShipmentDetailModal from "./detail";
-import ShipmentList from "./list";
+import AssignmentDetail from "./detail";
+import AssignmentList from "./list";
 
-const Shipments = () => {
+const Assignments = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openModal, setOpenModal] = useState<boolean>(false);
   const [forceReload, setForceReload] = useState<boolean>(false);
@@ -14,14 +14,14 @@ const Shipments = () => {
 
   return (
     <>
-      <ShipmentList
+      <AssignmentList
         onRowSelect={onRowSelect}
         selectedId={selectedId}
         onClickAdd={() => setOpenModal(true)}
         forceReload={forceReload}
         forceReloadCb={() => setForceReload(false)}
       />
-      <ShipmentDetailModal
+      <AssignmentDetail
         id={selectedId}
         onClose={() => setSelectedId(null)}
         forceReloadCb={() => setForceReload(true)}
@@ -35,4 +35,4 @@ const Shipments = () => {
   );
 };
 
-export default Shipments;
+export default Assignments;

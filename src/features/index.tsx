@@ -1,3 +1,4 @@
+import Assignments from "./assignments";
 import Shipments from "./shipments";
 
-export default { Shipments };
+export { Assignments, Shipments };

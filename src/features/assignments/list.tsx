@@ -1,14 +1,13 @@
 import { AddCircle, Delete, Info } from "@mui/icons-material";
 import { Box, CircularProgress, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
-import dayjs from "dayjs";
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useState } from "react";
-import { SHIPMENT_FILTER_TYPE, SHIPMENT_STATUS } from "../../constants";
+import { ASSIGNMENT_STATUS } from "../../constants";
 import useFilter from "../../hooks/filter.hook";
-import { shipmentServices } from "../../services/shipments";
-import { SearchParams, Shipment } from "../../store/models";
+import { assignmentServices } from "../../services";
+import { Assignment, SearchParams } from "../../store/models";
 
-interface ShipmentListProps {
+interface AssignmentListProps {
   onRowSelect: Function;
   onClickAdd: Function;
   selectedId: string | null;
@@ -16,16 +15,15 @@ interface ShipmentListProps {
   forceReloadCb: Function;
 }
 
-const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceReloadCb }: ShipmentListProps) => {
-  const [rows, setRows] = useState<Shipment[]>([]);
+const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceReloadCb }: AssignmentListProps) => {
+  const [rows, setRows] = useState<Assignment[]>([]);
   const [totalRow, setTotalRow] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
   const confirm = useConfirm();
   const defaultFilter = {
-    status: SHIPMENT_STATUS.OPEN,
+    status: ASSIGNMENT_STATUS.OPEN,
     search: null,
-    searchType: SHIPMENT_FILTER_TYPE.LABEL,
   }
 
   const fetchData = async (params: SearchParams) => {
@@ -34,10 +32,10 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
       const searchParams = {
         "_page": Number(params.page) + 1,
         "_limit": params.pageSize,
-        [params.searchType + "_like"]: params.search,
+        "label_like": params.search,
         "status": params.status,
       }
-      const res = await shipmentServices.getAll(searchParams);
+      const res = await assignmentServices.getAll(searchParams);
       if (res) {
         setRows(res.data);
         setTotalRow(res.total);
@@ -72,7 +70,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
     if (confirmed) {
       try {
         setLoading(true);
-        const status = await shipmentServices.deleteById(id);
+        const status = await assignmentServices.deleteById(id);
         if (status === 200) {
           handlePageChange(null, filterParams.page);
           setOpen(true);
@@ -108,36 +106,21 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
                   handleChangeInput("status", event.target.value);
                 }}
               >
-                <MenuItem key={SHIPMENT_STATUS.OPEN} value={SHIPMENT_STATUS.OPEN}>Open</MenuItem>
-                <MenuItem key={SHIPMENT_STATUS.IN_TRANSIT} value={SHIPMENT_STATUS.IN_TRANSIT}>In transit</MenuItem>
-                <MenuItem key={SHIPMENT_STATUS.DELIVERED} value={SHIPMENT_STATUS.DELIVERED}>Delivered</MenuItem>
+                <MenuItem key={ASSIGNMENT_STATUS.OPEN} value={ASSIGNMENT_STATUS.OPEN}>Open</MenuItem>
+                <MenuItem key={ASSIGNMENT_STATUS.COMPLETED} value={ASSIGNMENT_STATUS.COMPLETED}>Completed</MenuItem>
               </TextField>
               <IconButton onClick={() => onClickAdd()}><AddCircle /></IconButton>
             </Stack>
           </Grid>
           <Grid size={6}>
-            <Stack direction={"row"} spacing={1}>
-              <TextField
-                select
-                label="Search by"
-                sx={{ minWidth: 120 }}
-                value={filterParams.searchType}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  handleChangeInput("searchType", event.target.value);
-                }}
-              >
-                <MenuItem key={SHIPMENT_FILTER_TYPE.LABEL} value={SHIPMENT_FILTER_TYPE.LABEL}>Label</MenuItem>
-                <MenuItem key={SHIPMENT_FILTER_TYPE.CLIENT_NAME} value={SHIPMENT_FILTER_TYPE.CLIENT_NAME}>Client</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                label="Search"
-                variant="outlined"
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  handleChangeInput("search", event.target.value);
-                }}
-              />
-            </Stack>
+            <TextField
+              fullWidth
+              label="Search"
+              variant="outlined"
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                handleChangeInput("search", event.target.value);
+              }}
+            />
           </Grid>
         </Grid>
         <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
@@ -164,13 +147,13 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
                 <TableRow>
                   <TableCell align="center">Label</TableCell>
                   <TableCell align="center">Client name</TableCell>
-                  <TableCell align="center">Arrival Date</TableCell>
+                  <TableCell align="center">Shipment count</TableCell>
                   <TableCell align="center">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 <>
-                  {rows.map((row) => (
+                  {rows?.map((row) => (
                     <TableRow
                       hover
                       key={row.id}
@@ -178,8 +161,8 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
                       selected={row.id === selectedId}
                     >
                       <TableCell>{row.label}</TableCell>
-                      <TableCell align="center">{row.client_name}</TableCell>
-                      <TableCell align="center">{dayjs(row.arrival_date).format("DD/MM/YYYY-HH:mm:ss")}</TableCell>
+                      <TableCell align="center">{row.clients?.join(", ")}</TableCell>
+                      <TableCell align="center">{row.shipment_count}</TableCell>
                       <TableCell align="center">
                         <IconButton onClick={() => onRowDetailClick(row.id)}>
                           <Info />
@@ -217,4 +200,4 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
   );
 };
 
-export default ShipmentList;
+export default AssignmentList;
