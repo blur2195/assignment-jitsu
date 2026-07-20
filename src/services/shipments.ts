@@ -7,7 +7,6 @@ const crudService = createCrudService<Shipment>(apiUrl);
 
 export const shipmentServices = {
   ...crudService,
-  createShipment: crudService.create,
 
   async getByAssignmentId(id: string): Promise<Shipment[]> {
     const res = await axiosClient.get(`${apiUrl}?assignment_id=${id}`);

@@ -7,4 +7,4 @@ to start development server
 
 To use mockData, use json-server:
 # `npm install -g json-server`
-# `json-server --watch shipments.json --port 3001`
+# `json-server --watch mockData/shipments.json --port 3001`

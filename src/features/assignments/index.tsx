@@ -28,7 +28,6 @@ const Assignments = () => {
       <AssignmentDetail
         id={selectedId}
         onClose={closeDetail}
-        forceReloadCb={triggerReload}
       />
       <AddModal
         openModal={openModal}

@@ -4,9 +4,9 @@ import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import L from "leaflet";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import { CustomListItem } from "components";
+import { useForm } from "react-hook-form";
+import { MapContainer, Marker, Polyline, TileLayer, useMap } from "react-leaflet";
+import { CustomListItem, FormDateTimePicker, FormNumberField, ModalHeader } from "components";
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_OPTIONS } from "config";
 import { shipmentServices } from "services";
 import { compactModalStyle, modalStyle } from "styles/modal";
@@ -38,16 +38,20 @@ const RecenterAutomatically = ({ lat, lng, shipmentCords }: RecenterMapProps) =>
       map.setView([lat, lng], map.getZoom());
       return;
     }
-    shipmentCords?.map((cord) => {
-      L.marker(cord, { icon }).addTo(map);
-    });
-    const polyline = L.polyline(shipmentCords, { color: "lime" }).addTo(map);
-    map.fitBounds(polyline.getBounds(), {
-      padding: [50, 50],
-    });
+    const bounds = L.latLngBounds(shipmentCords);
+    map.fitBounds(bounds, { padding: [50, 50] });
   }, [map, lat, lng, shipmentCords]);
 
-  return null;
+  return (
+    <>
+      {shipmentCords?.map((cord, index) => (
+        <Marker key={`${cord[0]}-${cord[1]}-${index}`} position={cord} icon={icon} />
+      ))}
+      {!!shipmentCords?.length && shipmentCords.length > 1 && (
+        <Polyline positions={shipmentCords} pathOptions={{ color: "lime" }} />
+      )}
+    </>
+  );
 };
 
 const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCords }: ShipmentDetailModalProps) => {
@@ -64,6 +68,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
     handleSubmit,
     reset,
     watch,
+    formState: { isDirty },
   } = useForm<ShipmentUpdateFormValues>({
     resolver: yupResolver(shipmentUpdateSchema),
     defaultValues: {
@@ -73,7 +78,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
     },
   });
 
-  const editableData = watch();
+  const [lat, lng] = watch(["lat", "lng"]);
 
   const handleClickStatusField = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -96,8 +101,9 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
             delivery_by_date: res.delivery_by_date,
           });
         }
-        setLoading(false);
-      } catch (error) {
+      } catch {
+        setData(null);
+      } finally {
         setLoading(false);
       }
     }
@@ -150,11 +156,11 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
         const status = await shipmentServices.updateById(id, updateObj);
         if (status === 200) {
           await fetchData(id);
-          successCb && successCb();
+          successCb?.();
         }
-        setLoading(false);
-      } catch (error) {
-        console.log(error);
+      } catch {
+        // status update failed; loading state is cleared below
+      } finally {
         setLoading(false);
       }
     }
@@ -166,12 +172,12 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
         setLoading(true);
         const updateStatus = await shipmentServices.updateById(id, { ...formData });
         if (updateStatus === 200) {
-          onClose && onClose();
-          forceReloadCb && forceReloadCb();
-        };
-        setLoading(false);
-      } catch (error) {
-        console.log(error);
+          onClose?.();
+          forceReloadCb?.();
+        }
+      } catch {
+        // save failed; loading state is cleared below
+      } finally {
         setLoading(false);
       }
     }
@@ -183,21 +189,25 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
 
   return (
     <>
-      <Modal open={!!id} onClose={() => onClose && onClose()} keepMounted={false}>
+      <Modal open={!!id} onClose={() => onClose?.()} keepMounted={false}>
         <Box sx={modalStyle}>
           <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
-            <Stack direction={"row"}>
-              <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Shipment detail</Box>
-              {!isReadOnly && (
-                <Button
-                  variant="contained"
-                  loading={loading}
-                  onClick={handleSubmit(onSubmit)}
-                >
-                  Save
-                </Button>
-              )}
-            </Stack>
+            <ModalHeader
+              title="Shipment detail"
+              onClose={() => onClose?.()}
+              actions={
+                !isReadOnly ? (
+                  <Button
+                    variant="contained"
+                    loading={loading}
+                    disabled={!isDirty}
+                    onClick={handleSubmit(onSubmit)}
+                  >
+                    Save
+                  </Button>
+                ) : undefined
+              }
+            />
             <Box sx={{ flex: 1, overflow: "auto" }}>
               {data && (
                 <>
@@ -224,7 +234,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
                             <MenuItem
                               key={value}
                               selected={data?.status === value}
-                              disabled={disabledStatuses.includes(data?.status)}
+                              disabled={data?.status ? disabledStatuses.includes(data.status) : false}
                               onClick={() => handleChangeStatus(value)}
                             >
                               {label}
@@ -238,27 +248,12 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
                         <DateTimePicker disabled value={dayjs(data?.arrival_date)} />
                       </CustomListItem>
                     </ListItem>
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                      <CustomListItem title={"Delivery by date"}>
-                        <Controller
-                          name="delivery_by_date"
-                          control={control}
-                          render={({ field, fieldState }) => (
-                            <DateTimePicker
-                              disabled={isReadOnly}
-                              value={dayjs(field.value)}
-                              onChange={(value) => field.onChange(dayjs(value).toISOString())}
-                              slotProps={{
-                                textField: {
-                                  error: !!fieldState.error,
-                                  helperText: fieldState.error?.message,
-                                },
-                              }}
-                            />
-                          )}
-                        />
-                      </CustomListItem>
-                    </ListItem>
+                    <FormDateTimePicker
+                      title="Delivery by date"
+                      name="delivery_by_date"
+                      control={control}
+                      disabled={isReadOnly}
+                    />
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Warehouse ID"}>
                         <TextField disabled size="small" value={data?.warehouse_id || ""} />
@@ -269,53 +264,29 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
                         <TextField disabled size="small" value={data?.assignment_id || ""} />
                       </CustomListItem>
                     </ListItem>
+                    <FormNumberField
+                      title="Latitude"
+                      name="lat"
+                      control={control}
+                      disabled={isReadOnly}
+                    />
+                    <FormNumberField
+                      title="Longitude"
+                      name="lng"
+                      control={control}
+                      disabled={isReadOnly}
+                    />
                     <ListItem disablePadding sx={{ mb: 1 }}>
-                      <CustomListItem title={"Latitude"}>
-                        <Controller
-                          name="lat"
-                          control={control}
-                          render={({ field, fieldState }) => (
-                            <TextField
-                              disabled={isReadOnly}
-                              size="small"
-                              type="number"
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                              error={!!fieldState.error}
-                              helperText={fieldState.error?.message}
-                            />
-                          )}
-                        />
-                      </CustomListItem>
-                    </ListItem>
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                      <CustomListItem title={"Longitude"}>
-                        <Controller
-                          name="lng"
-                          control={control}
-                          render={({ field, fieldState }) => (
-                            <TextField
-                              disabled={isReadOnly}
-                              size="small"
-                              type="number"
-                              value={field.value ?? ""}
-                              onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
-                              error={!!fieldState.error}
-                              helperText={fieldState.error?.message}
-                            />
-                          )}
-                        />
-                      </CustomListItem>
-                    </ListItem>
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                      <MapContainer center={[editableData?.lat, editableData?.lng]} zoom={13} scrollWheelZoom={false} style={{ width: "600px", height: "300px" }}>
-                        <TileLayer
-                          attribution="&copy; <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors"
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <Marker position={[editableData?.lat, editableData?.lng]} icon={icon} />
-                        <RecenterAutomatically lat={editableData?.lat} lng={editableData?.lng} shipmentCords={shipmentCords} />
-                      </MapContainer>
+                      <Box sx={{ width: "100%", height: { xs: 220, sm: 300 } }}>
+                        <MapContainer center={[lat, lng]} zoom={13} scrollWheelZoom={false} style={{ width: "100%", height: "100%" }}>
+                          <TileLayer
+                            attribution="&copy; <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors"
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={[lat, lng]} icon={icon} />
+                          <RecenterAutomatically lat={lat} lng={lng} shipmentCords={shipmentCords} />
+                        </MapContainer>
+                      </Box>
                     </ListItem>
                   </List>
                 </>

@@ -8,7 +8,7 @@ export const createCrudService = <T>(apiUrl: string) => ({
     const res = await axiosClient.get(`${apiUrl}?${queryString}`);
     return {
       data: res.data,
-      total: res.headers["x-total-count"],
+      total: Number(res.headers["x-total-count"]) || 0,
     };
   },
 

@@ -1,13 +1,13 @@
 import { AddCircle, Delete, Info } from "@mui/icons-material";
-import { Box, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
+import { Box, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
 import dayjs from "dayjs";
-import { useConfirm } from "material-ui-confirm";
-import { useCallback, useEffect, useState } from "react";
+import { ChangeEvent } from "react";
 import { LoadingOverlay } from "components";
 import { SHIPMENT_FILTER_TYPE, SHIPMENT_STATUS } from "config";
-import { useFilter } from "hooks";
+import { useEntityList } from "hooks";
 import { shipmentServices } from "services";
-import { SearchParams, Shipment } from "types";
+import { Shipment } from "types";
+import { buildPaginatedSearchParams } from "utils";
 
 interface ShipmentListProps {
   onRowSelect: (id: string | null) => void;
@@ -17,47 +17,34 @@ interface ShipmentListProps {
   forceReloadCb: () => void;
 }
 
+const defaultFilter = {
+  status: SHIPMENT_STATUS.OPEN,
+  search: null,
+  searchType: SHIPMENT_FILTER_TYPE.LABEL,
+};
+
 const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceReloadCb }: ShipmentListProps) => {
-  const [rows, setRows] = useState<Shipment[]>([]);
-  const [totalRow, setTotalRow] = useState<number | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [open, setOpen] = useState<boolean>(false);
-  const confirm = useConfirm();
-  const defaultFilter = {
-    status: SHIPMENT_STATUS.OPEN,
-    search: null,
-    searchType: SHIPMENT_FILTER_TYPE.LABEL,
-  };
-
-  const fetchData = useCallback(async (params: SearchParams) => {
-    try {
-      setLoading(true);
-      const searchParams = {
-        "_page": Number(params.page) + 1,
-        "_limit": params.pageSize,
-        [params.searchType + "_like"]: params.search,
-        "status": params.status,
-      };
-      const res = await shipmentServices.getAll(searchParams);
-      if (res) {
-        setRows(res.data);
-        setTotalRow(res.total);
-      }
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
-    }
-  }, []);
-
   const {
+    rows,
+    totalRow,
+    loading,
+    deletedSnackbarOpen,
+    setDeletedSnackbarOpen,
     filterParams,
     handleChangeInput,
     handlePageChange,
     handlePageSizeChange,
-  } = useFilter({
-    defaultValue: defaultFilter,
-    fetchData,
-    paging: true,
+    onRowDeleteClick,
+  } = useEntityList<Shipment>({
+    defaultFilter,
+    buildSearchParams: (params) => buildPaginatedSearchParams(
+      params,
+      String(params.searchType ?? SHIPMENT_FILTER_TYPE.LABEL),
+    ),
+    getAll: shipmentServices.getAll,
+    deleteById: shipmentServices.deleteById,
+    forceReload,
+    forceReloadCb,
   });
 
   const onRowDetailClick = (id: string) => {
@@ -65,85 +52,55 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
     else onRowSelect(id);
   };
 
-  const onRowDeleteClick = async (id: string) => {
-    const { confirmed } = await confirm({
-      description: "This action is permanent!",
-    });
-
-    if (confirmed) {
-      try {
-        setLoading(true);
-        const status = await shipmentServices.deleteById(id);
-        if (status === 200) {
-          handlePageChange(null, Number(filterParams.page));
-          setOpen(true);
-        }
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-      }
-    };
-  };
-
-  const handleForceReload = async () => {
-    handlePageChange(null, Number(filterParams.page));
-    forceReloadCb();
-  };
-
-  useEffect(() => {
-    if (forceReload) handleForceReload();
-  }, [forceReload]);
-
   return (
     <>
       <Stack direction={"column"} sx={{ width: "100%", height: "100%" }}>
-        <Grid container sx={{ px: 2, py: 1 }}>
-          <Grid size={6}>
-            <Stack direction={"row"} spacing={2}>
-              <TextField
-                select
-                label="Status"
-                sx={{ minWidth: 120 }}
-                value={filterParams.status}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  handleChangeInput("status", event.target.value);
-                }}
-              >
-                <MenuItem key={SHIPMENT_STATUS.OPEN} value={SHIPMENT_STATUS.OPEN}>Open</MenuItem>
-                <MenuItem key={SHIPMENT_STATUS.IN_TRANSIT} value={SHIPMENT_STATUS.IN_TRANSIT}>In transit</MenuItem>
-                <MenuItem key={SHIPMENT_STATUS.DELIVERED} value={SHIPMENT_STATUS.DELIVERED}>Delivered</MenuItem>
-              </TextField>
-              <IconButton onClick={onClickAdd}><AddCircle /></IconButton>
-            </Stack>
-          </Grid>
-          <Grid size={6}>
-            <Stack direction={"row"} spacing={1}>
-              <TextField
-                select
-                label="Search by"
-                sx={{ minWidth: 120 }}
-                value={filterParams.searchType}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  handleChangeInput("searchType", event.target.value);
-                }}
-              >
-                <MenuItem key={SHIPMENT_FILTER_TYPE.LABEL} value={SHIPMENT_FILTER_TYPE.LABEL}>Label</MenuItem>
-                <MenuItem key={SHIPMENT_FILTER_TYPE.CLIENT_NAME} value={SHIPMENT_FILTER_TYPE.CLIENT_NAME}>Client</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                label="Search"
-                variant="outlined"
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  handleChangeInput("search", event.target.value);
-                }}
-              />
-            </Stack>
-          </Grid>
-        </Grid>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ px: 2, py: 1, flexWrap: "nowrap", overflowX: "auto", alignItems: "center" }}
+        >
+          <TextField
+            select
+            size="small"
+            label="Status"
+            sx={{ md: { minWidth: 120 }, flexShrink: 0 }}
+            value={filterParams.status}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              handleChangeInput("status", event.target.value);
+            }}
+          >
+            <MenuItem key={SHIPMENT_STATUS.OPEN} value={SHIPMENT_STATUS.OPEN}>Open</MenuItem>
+            <MenuItem key={SHIPMENT_STATUS.IN_TRANSIT} value={SHIPMENT_STATUS.IN_TRANSIT}>In transit</MenuItem>
+            <MenuItem key={SHIPMENT_STATUS.DELIVERED} value={SHIPMENT_STATUS.DELIVERED}>Delivered</MenuItem>
+          </TextField>
+          <IconButton onClick={onClickAdd} sx={{ flexShrink: 0 }}><AddCircle /></IconButton>
+          <TextField
+            select
+            size="small"
+            label="Search by"
+            sx={{ md: { minWidth: 120 }, flexShrink: 0 }}
+            value={filterParams.searchType}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              handleChangeInput("searchType", event.target.value);
+            }}
+          >
+            <MenuItem key={SHIPMENT_FILTER_TYPE.LABEL} value={SHIPMENT_FILTER_TYPE.LABEL}>Label</MenuItem>
+            <MenuItem key={SHIPMENT_FILTER_TYPE.CLIENT_NAME} value={SHIPMENT_FILTER_TYPE.CLIENT_NAME}>Client</MenuItem>
+          </TextField>
+          <TextField
+            size="small"
+            label="Search"
+            variant="outlined"
+            sx={{ flex: 1, md: { minWidth: 120 } }}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              handleChangeInput("search", event.target.value);
+            }}
+          />
+        </Stack>
         <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
           {loading && <LoadingOverlay />}
-          <TableContainer sx={{ height: "100%" }}>
+          <TableContainer sx={{ height: "100%", overflowX: "auto" }}>
             <Table stickyHeader sx={{ maxHeight: "100%", overflow: "auto" }}>
               <TableHead>
                 <TableRow>
@@ -178,22 +135,29 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
             </Table>
           </TableContainer>
         </Box>
-        <Box sx={{ px: 2, py: 1 }}>
+        <Box sx={{ px: { xs: 1, sm: 2 }, py: 1 }}>
           <TablePagination
             rowsPerPageOptions={[25, 100]}
             component={"div"}
-            count={totalRow || 0}
+            count={totalRow}
             rowsPerPage={Number(filterParams.pageSize)}
             page={Number(filterParams.page)}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handlePageSizeChange}
+            sx={{
+              ".MuiTablePagination-toolbar": {
+                flexWrap: "wrap",
+                justifyContent: { xs: "center", sm: "flex-end" },
+                gap: 1,
+              },
+            }}
           />
         </Box>
       </Stack>
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        open={open}
-        onClose={() => setOpen(false)}
+        open={deletedSnackbarOpen}
+        onClose={() => setDeletedSnackbarOpen(false)}
         message="Deleted!"
       />
     </>

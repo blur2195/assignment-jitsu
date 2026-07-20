@@ -1,6 +1,6 @@
 import { Box, List, ListItem, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { CustomListItem } from "components";
+import { CustomListItem, ModalHeader } from "components";
 import { assignmentServices, shipmentServices } from "services";
 import { modalStyle } from "styles/modal";
 import { Assignment, Shipment } from "types";
@@ -9,7 +9,6 @@ import ShipmentDetailModal from "../shipments/detail";
 interface AssignmentDetailModalProps {
   id: string | null;
   onClose?: () => void;
-  forceReloadCb?: () => void;
 }
 
 const AssignmentDetailModal = ({ id, onClose }: AssignmentDetailModalProps) => {
@@ -21,14 +20,17 @@ const AssignmentDetailModal = ({ id, onClose }: AssignmentDetailModalProps) => {
   const fetchData = async (id: string | null) => {
     if (id) {
       try {
-        const res = await assignmentServices.getById(id);
+        const [res, assignedListRes] = await Promise.all([
+          assignmentServices.getById(id),
+          shipmentServices.getByAssignmentId(id),
+        ]);
         if (res) setData(res);
-        const assignedListRes = await shipmentServices.getByAssignmentId(id);
-        if (assignedListRes) {
-          setAssignedList(assignedListRes);
-          setTotalAssigned(assignedListRes.length);
-        };
-      } catch (error) {
+        setAssignedList(assignedListRes ?? []);
+        setTotalAssigned(assignedListRes?.length ?? 0);
+      } catch {
+        setData(null);
+        setAssignedList([]);
+        setTotalAssigned(0);
       }
     }
   };
@@ -44,10 +46,10 @@ const AssignmentDetailModal = ({ id, onClose }: AssignmentDetailModalProps) => {
 
   return (
     <>
-      <Modal open={!!id} onClose={() => onClose && onClose()}>
+      <Modal open={!!id} onClose={() => onClose?.()}>
         <Box sx={modalStyle}>
           <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
-            <Box component={"h2"} sx={{ m: 0 }}>Assignment detail</Box>
+            <ModalHeader title="Assignment detail" onClose={() => onClose?.()} />
             <Box sx={{ flex: 1, overflow: "auto" }}>
               {data && (
                 <>
@@ -94,7 +96,6 @@ const AssignmentDetailModal = ({ id, onClose }: AssignmentDetailModalProps) => {
       <ShipmentDetailModal
         id={selectedId}
         onClose={() => setSelectedId(null)}
-        forceReloadCb={() => {}}
         readOnly={true}
         shipmentCords={allShipmentCords}
       />

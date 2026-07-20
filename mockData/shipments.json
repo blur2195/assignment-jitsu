@@ -1180,6 +1180,18 @@
       "delivery_by_date": "2026-07-13T08:51:58.419Z",
       "warehouse_id": "1",
       "id": "YB2Z-DQ"
+    },
+    {
+      "label": "new ship",
+      "client_name": "abc",
+      "status": "IN_TRANSIT",
+      "arrival_date": "2026-07-20T05:49:47.257Z",
+      "delivery_by_date": "2026-07-20T05:49:47.257Z",
+      "warehouse_id": "1",
+      "lat": 1,
+      "lng": 1,
+      "id": "0UJLM1F",
+      "assignment_id": "145fzmc"
     }
   ],
   "assignments": [
@@ -1216,6 +1228,13 @@
       "shipment_count": 0,
       "clients": [],
       "id": "OnBMCJh"
+    },
+    {
+      "label": "new assign",
+      "status": "OPEN",
+      "shipment_count": 0,
+      "clients": [],
+      "id": "9DiqsoJ"
     }
   ]
 }

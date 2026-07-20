@@ -1,11 +1,10 @@
 import { yupResolver } from "@hookform/resolvers/yup";
-import { Box, Button, List, ListItem, MenuItem, Modal, Stack, TextField } from "@mui/material";
+import { List } from "@mui/material";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { CustomListItem } from "components";
+import { useForm } from "react-hook-form";
+import { EntityFormModal, FormStatusSelect, FormTextField } from "components";
 import { ASSIGNMENT_STATUS } from "config";
 import { assignmentServices } from "services";
-import { modalStyle } from "styles/modal";
 import { assignmentFormSchema, AssignmentFormValues } from "validation";
 
 interface AddModalProps {
@@ -48,66 +47,36 @@ const AddModal = ({ openModal, closeModal, forceReloadCb }: AddModalProps) => {
         closeModal();
         forceReloadCb();
       }
-      setLoading(false);
-    } catch (error) {
+    } catch {
+      // request failed; loading state is cleared below
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal open={openModal} onClose={handleCloseModal}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit(onSubmit)}
-        sx={modalStyle}
-      >
-        <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
-          <Stack direction={"row"}>
-            <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Add new assignment</Box>
-            <Button
-              type="submit"
-              variant="contained"
-              loading={loading}
-            >
-              Save
-            </Button>
-          </Stack>
-          <Box sx={{ flex: 1, overflow: "auto" }}>
-            <List disablePadding>
-              <ListItem disablePadding sx={{ mb: 1 }}>
-                <CustomListItem title={"Label"}>
-                  <TextField
-                    size="small"
-                    {...register("label")}
-                    error={!!errors.label}
-                    helperText={errors.label?.message}
-                  />
-                </CustomListItem>
-              </ListItem>
-              <ListItem disablePadding sx={{ mb: 1 }}>
-                <CustomListItem title={"Status"}>
-                  <Controller
-                    name="status"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        select
-                        sx={{ minWidth: 120 }}
-                        {...field}
-                        value={field.value ?? ASSIGNMENT_STATUS.OPEN}
-                        disabled
-                      >
-                        <MenuItem key={ASSIGNMENT_STATUS.OPEN} value={ASSIGNMENT_STATUS.OPEN}>Open</MenuItem>
-                      </TextField>
-                    )}
-                  />
-                </CustomListItem>
-              </ListItem>
-            </List>
-          </Box>
-        </Stack>
-      </Box>
-    </Modal>
+    <EntityFormModal
+      title="Add new assignment"
+      open={openModal}
+      onClose={handleCloseModal}
+      onSubmit={handleSubmit(onSubmit)}
+      loading={loading}
+    >
+      <List disablePadding>
+        <FormTextField
+          title="Label"
+          error={errors.label}
+          {...register("label")}
+        />
+        <FormStatusSelect
+          title="Status"
+          name="status"
+          control={control}
+          statusValue={ASSIGNMENT_STATUS.OPEN}
+          label="Open"
+        />
+      </List>
+    </EntityFormModal>
   );
 };
 

@@ -1,4 +1,5 @@
 import { yupResolver } from "@hookform/resolvers/yup";
+import { ModalHeader } from "components";
 import { Box, Button, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from "@mui/material";
 import { SxProps, Theme } from "@mui/material/styles";
 import { useCallback, useState } from "react";
@@ -7,6 +8,7 @@ import { ASSIGNMENT_STATUS, SHIPMENT_STATUS } from "config";
 import { useFilter } from "hooks";
 import { assignmentServices, shipmentServices } from "services";
 import { Assignment, SearchParams } from "types";
+import { buildPaginatedSearchParams } from "utils";
 import { assignShipmentSchema, AssignShipmentFormValues } from "validation";
 
 interface AssignModalProps {
@@ -44,19 +46,13 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
   const fetchAssignments = useCallback(async (params: SearchParams) => {
     try {
       setLoading(true);
-      const searchParams = {
-        "_page": Number(params.page) + 1,
-        "_limit": params.pageSize,
-        "label_like": params.search,
-        "status": params.status,
-      };
-      const res = await assignmentServices.getAll(searchParams);
-      if (res) {
-        setAssignments(res.data);
-        setTotal(res.total);
-      }
-      setLoading(false);
-    } catch (error) {
+      const res = await assignmentServices.getAll(buildPaginatedSearchParams(params, "label"));
+      setAssignments(res.data);
+      setTotal(res.total);
+    } catch {
+      setAssignments([]);
+      setTotal(0);
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -82,9 +78,9 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
       };
       const status = await shipmentServices.updateById(id, updateObj);
       if (status === 200) successCb?.();
-      setLoading(false);
-    } catch (error) {
-      console.log(error);
+    } catch {
+      // assignment failed; loading state is cleared below
+    } finally {
       setLoading(false);
     }
   };
@@ -102,16 +98,15 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
         sx={style}
       >
         <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
-          <Stack direction={"row"}>
-            <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Select Assignment</Box>
-            <Button
-              type="submit"
-              variant="contained"
-              loading={loading}
-            >
-              Save
-            </Button>
-          </Stack>
+          <ModalHeader
+            title="Select Assignment"
+            onClose={handleCloseModal}
+            actions={
+              <Button type="submit" variant="contained" loading={loading}>
+                Save
+              </Button>
+            }
+          />
           {errors.assignmentId && (
             <Typography color="error" variant="body2">
               {errors.assignmentId.message}
@@ -149,7 +144,7 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
             <TablePagination
               rowsPerPageOptions={[25, 100]}
               component={"div"}
-              count={total || 0}
+              count={total}
               rowsPerPage={Number(filterParams.pageSize)}
               page={Number(filterParams.page)}
               onPageChange={handlePageChange}
