@@ -1,10 +1,13 @@
-import { Box, Button, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { Box, Button, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Typography } from "@mui/material";
 import { SxProps, Theme } from "@mui/material/styles";
 import { useCallback, useState } from "react";
+import { useForm } from "react-hook-form";
 import { ASSIGNMENT_STATUS, SHIPMENT_STATUS } from "config";
 import { useFilter } from "hooks";
 import { assignmentServices, shipmentServices } from "services";
 import { Assignment, SearchParams } from "types";
+import { assignShipmentSchema, AssignShipmentFormValues } from "validation";
 
 interface AssignModalProps {
   id: string | null;
@@ -16,13 +19,27 @@ interface AssignModalProps {
 
 const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) => {
   const [loading, setLoading] = useState<boolean>(false);
-  const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [total, setTotal] = useState<number>(0);
   const defaultFilter = {
     status: ASSIGNMENT_STATUS.OPEN,
     search: null,
   };
+
+  const {
+    setValue,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<AssignShipmentFormValues>({
+    resolver: yupResolver(assignShipmentSchema),
+    defaultValues: {
+      assignmentId: "",
+    },
+  });
+
+  const assignmentId = watch("assignmentId");
 
   const fetchAssignments = useCallback(async (params: SearchParams) => {
     try {
@@ -54,16 +71,18 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
     paging: true,
   });
 
-  const handleSaveAssignment = async () => {
-    if (!id || !assignmentId) return;
+  const onSubmit = async ({ assignmentId }: AssignShipmentFormValues) => {
+    if (!id) return;
 
     try {
+      setLoading(true);
       const updateObj = {
         status: SHIPMENT_STATUS.IN_TRANSIT,
         assignment_id: assignmentId,
       };
       const status = await shipmentServices.updateById(id, updateObj);
       if (status === 200) successCb?.();
+      setLoading(false);
     } catch (error) {
       console.log(error);
       setLoading(false);
@@ -71,25 +90,33 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
   };
 
   const handleCloseModal = () => {
-    setAssignmentId(null);
+    reset({ assignmentId: "" });
     onClose();
   };
 
   return (
     <Modal open={open} onClose={handleCloseModal}>
-      <Box sx={style}>
+      <Box
+        component="form"
+        onSubmit={handleSubmit(onSubmit)}
+        sx={style}
+      >
         <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
           <Stack direction={"row"}>
             <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Select Assignment</Box>
             <Button
+              type="submit"
               variant="contained"
               loading={loading}
-              onClick={handleSaveAssignment}
-              disabled={!assignmentId}
             >
               Save
             </Button>
           </Stack>
+          {errors.assignmentId && (
+            <Typography color="error" variant="body2">
+              {errors.assignmentId.message}
+            </Typography>
+          )}
           <Box sx={{ flex: 1, overflow: "auto" }}>
             <TableContainer sx={{ height: "100%" }}>
               <Table stickyHeader sx={{ maxHeight: "100%", overflow: "auto" }}>
@@ -107,7 +134,7 @@ const AssignModal = ({ id, open, onClose, style, successCb }: AssignModalProps) 
                       key={row.id}
                       sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
                       selected={row.id === assignmentId}
-                      onClick={() => setAssignmentId(row.id)}
+                      onClick={() => setValue("assignmentId", row.id, { shouldValidate: true })}
                     >
                       <TableCell>{row.id}</TableCell>
                       <TableCell>{row.label}</TableCell>

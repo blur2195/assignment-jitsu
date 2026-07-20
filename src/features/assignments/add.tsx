@@ -1,9 +1,12 @@
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Box, Button, List, ListItem, MenuItem, Modal, Stack, TextField } from "@mui/material";
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { CustomListItem } from "components";
 import { ASSIGNMENT_STATUS } from "config";
 import { assignmentServices } from "services";
 import { modalStyle } from "styles/modal";
+import { assignmentFormSchema, AssignmentFormValues } from "validation";
 
 interface AddModalProps {
   openModal: boolean;
@@ -11,27 +14,37 @@ interface AddModalProps {
   forceReloadCb: () => void;
 }
 
+const defaultValues: AssignmentFormValues = {
+  label: "",
+  status: ASSIGNMENT_STATUS.OPEN,
+  shipment_count: 0,
+  clients: [],
+};
+
 const AddModal = ({ openModal, closeModal, forceReloadCb }: AddModalProps) => {
   const [loading, setLoading] = useState<boolean>(false);
-  const [editableData, setEditableData] = useState<Record<string, unknown>>({
-    label: null,
-    status: ASSIGNMENT_STATUS.OPEN,
-    shipment_count: 0,
-    clients: [],
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AssignmentFormValues>({
+    resolver: yupResolver(assignmentFormSchema),
+    defaultValues,
   });
 
-  const handleChangeInput = (field: string, value: unknown) => {
-    setEditableData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleCloseModal = () => {
+    reset(defaultValues);
+    closeModal();
   };
 
-  const handleSaveData = async () => {
+  const onSubmit = async (data: AssignmentFormValues) => {
     try {
       setLoading(true);
-      const status = await assignmentServices.create({ ...editableData });
+      const status = await assignmentServices.create({ ...data });
       if (status === 201) {
+        reset(defaultValues);
         closeModal();
         forceReloadCb();
       }
@@ -42,15 +55,19 @@ const AddModal = ({ openModal, closeModal, forceReloadCb }: AddModalProps) => {
   };
 
   return (
-    <Modal open={openModal} onClose={closeModal}>
-      <Box sx={modalStyle}>
+    <Modal open={openModal} onClose={handleCloseModal}>
+      <Box
+        component="form"
+        onSubmit={handleSubmit(onSubmit)}
+        sx={modalStyle}
+      >
         <Stack direction={"column"} spacing={2} sx={{ width: "100%", height: "100%" }}>
           <Stack direction={"row"}>
-            <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Add new shipment</Box>
+            <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Add new assignment</Box>
             <Button
+              type="submit"
               variant="contained"
               loading={loading}
-              onClick={handleSaveData}
             >
               Save
             </Button>
@@ -61,21 +78,29 @@ const AddModal = ({ openModal, closeModal, forceReloadCb }: AddModalProps) => {
                 <CustomListItem title={"Label"}>
                   <TextField
                     size="small"
-                    value={editableData?.label || ""}
-                    onChange={(e) => handleChangeInput("label", e.target.value)}
+                    {...register("label")}
+                    error={!!errors.label}
+                    helperText={errors.label?.message}
                   />
                 </CustomListItem>
               </ListItem>
               <ListItem disablePadding sx={{ mb: 1 }}>
                 <CustomListItem title={"Status"}>
-                  <TextField
-                    select
-                    sx={{ minWidth: 120 }}
-                    value={editableData?.status ?? ASSIGNMENT_STATUS.OPEN}
-                    disabled
-                  >
-                    <MenuItem key={ASSIGNMENT_STATUS.OPEN} value={ASSIGNMENT_STATUS.OPEN}>Open</MenuItem>
-                  </TextField>
+                  <Controller
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        select
+                        sx={{ minWidth: 120 }}
+                        {...field}
+                        value={field.value ?? ASSIGNMENT_STATUS.OPEN}
+                        disabled
+                      >
+                        <MenuItem key={ASSIGNMENT_STATUS.OPEN} value={ASSIGNMENT_STATUS.OPEN}>Open</MenuItem>
+                      </TextField>
+                    )}
+                  />
                 </CustomListItem>
               </ListItem>
             </List>

@@ -434,13 +434,14 @@
       "id": "shp_042",
       "client_name": "Sony",
       "label": "JFK-581-250522-42",
-      "status": "OPEN",
+      "status": "IN_TRANSIT",
       "arrival_date": "2026-07-12T12:57:37.638Z",
       "delivery_by_date": "2026-07-14T12:57:37.638Z",
       "eta": "2026-07-13T04:57:37.638Z",
       "warehouse_id": "581",
-      "lat": 32.87411974338233,
-      "lng": -97.31108370923081
+      "lat": 31.8741197433823,
+      "lng": -97.31108370923081,
+      "assignment_id": "145fzmc"
     },
     {
       "id": "shp_043",
@@ -475,7 +476,7 @@
       "delivery_by_date": "2026-07-05T12:57:37.638Z",
       "eta": "2026-07-04T23:57:37.638Z",
       "warehouse_id": "581",
-      "lat": 32.979477187271904,
+      "lat": 30.9794771872719,
       "lng": -97.38323164697174
     },
     {
@@ -1208,6 +1209,13 @@
       "shipment_count": 0,
       "clients": [],
       "id": "145fzmc"
+    },
+    {
+      "label": "Newww",
+      "status": "OPEN",
+      "shipment_count": 0,
+      "clients": [],
+      "id": "OnBMCJh"
     }
   ]
 }

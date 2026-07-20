@@ -1,14 +1,17 @@
+import { yupResolver } from "@hookform/resolvers/yup";
 import { Box, Button, List, ListItem, Menu, MenuItem, Modal, Stack, TextField } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import L from "leaflet";
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { CustomListItem } from "components";
 import { SHIPMENT_STATUS, SHIPMENT_STATUS_OPTIONS } from "config";
 import { shipmentServices } from "services";
 import { compactModalStyle, modalStyle } from "styles/modal";
 import { Shipment } from "types";
+import { shipmentUpdateSchema, ShipmentUpdateFormValues } from "validation";
 import AssignModal from "./assign";
 
 interface ShipmentDetailModalProps {
@@ -55,11 +58,22 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
   const statusMenuOpen = Boolean(anchorEl);
   const isReadOnly = Boolean(readOnly);
   const [assignOpen, setAssignOpen] = useState<boolean>(false);
-  const [editableData, setEditableData] = useState<any>({
-    lat: null,
-    lng: null,
-    delivery_by_date: null,
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+  } = useForm<ShipmentUpdateFormValues>({
+    resolver: yupResolver(shipmentUpdateSchema),
+    defaultValues: {
+      lat: 0,
+      lng: 0,
+      delivery_by_date: "",
+    },
   });
+
+  const editableData = watch();
 
   const handleClickStatusField = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -76,12 +90,11 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
         const res = await shipmentServices.getById(id);
         if (res) {
           setData(res);
-          setEditableData({
+          reset({
             lat: res.lat,
             lng: res.lng,
             delivery_by_date: res.delivery_by_date,
-            status: res.status,
-          })
+          });
         }
         setLoading(false);
       } catch (error) {
@@ -104,13 +117,6 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
     if (selectedId !== null) fetchData(selectedId);
     else setData(null);
   }, [selectedId]);
-
-  const handleChangeInput = (field: string, value: any) => {
-    setEditableData((prev: any) => ({
-      ...prev,
-      [field]: value,
-    }))
-  };
 
   const handleChangeStatus = (newStatus: keyof typeof SHIPMENT_STATUS) => {
     if (data?.status !== newStatus) {
@@ -154,12 +160,11 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
     }
   };
 
-  const handleSave = async () => {
+  const onSubmit = async (formData: ShipmentUpdateFormValues) => {
     if (id) {
       try {
         setLoading(true);
-        const { status, ...res } = editableData;
-        const updateStatus = await shipmentServices.updateById(id, { ...res });
+        const updateStatus = await shipmentServices.updateById(id, { ...formData });
         if (updateStatus === 200) {
           onClose && onClose();
           forceReloadCb && forceReloadCb();
@@ -184,7 +189,13 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
             <Stack direction={"row"}>
               <Box component={"h2"} sx={{ m: 0, flex: 1 }}>Shipment detail</Box>
               {!isReadOnly && (
-                <Button variant="contained" loading={loading} onClick={handleSave}>Save</Button>
+                <Button
+                  variant="contained"
+                  loading={loading}
+                  onClick={handleSubmit(onSubmit)}
+                >
+                  Save
+                </Button>
               )}
             </Stack>
             <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -229,10 +240,22 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
                     </ListItem>
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Delivery by date"}>
-                        <DateTimePicker
-                          disabled={isReadOnly}
-                          value={dayjs(editableData?.delivery_by_date)}
-                          onChange={(value) => handleChangeInput("delivery_by_date", dayjs(value).toISOString())}
+                        <Controller
+                          name="delivery_by_date"
+                          control={control}
+                          render={({ field, fieldState }) => (
+                            <DateTimePicker
+                              disabled={isReadOnly}
+                              value={dayjs(field.value)}
+                              onChange={(value) => field.onChange(dayjs(value).toISOString())}
+                              slotProps={{
+                                textField: {
+                                  error: !!fieldState.error,
+                                  helperText: fieldState.error?.message,
+                                },
+                              }}
+                            />
+                          )}
                         />
                       </CustomListItem>
                     </ListItem>
@@ -248,21 +271,39 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
                     </ListItem>
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Latitude"}>
-                        <TextField
-                          disabled={isReadOnly}
-                          size="small"
-                          value={editableData?.lat}
-                          onChange={(e) => handleChangeInput("lat", e.target.value)}
+                        <Controller
+                          name="lat"
+                          control={control}
+                          render={({ field, fieldState }) => (
+                            <TextField
+                              disabled={isReadOnly}
+                              size="small"
+                              type="number"
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                              error={!!fieldState.error}
+                              helperText={fieldState.error?.message}
+                            />
+                          )}
                         />
                       </CustomListItem>
                     </ListItem>
                     <ListItem disablePadding sx={{ mb: 1 }}>
                       <CustomListItem title={"Longitude"}>
-                        <TextField
-                          disabled={isReadOnly}
-                          size="small"
-                          value={editableData?.lng}
-                          onChange={(e) => handleChangeInput("lng", e.target.value)}
+                        <Controller
+                          name="lng"
+                          control={control}
+                          render={({ field, fieldState }) => (
+                            <TextField
+                              disabled={isReadOnly}
+                              size="small"
+                              type="number"
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value === "" ? "" : Number(e.target.value))}
+                              error={!!fieldState.error}
+                              helperText={fieldState.error?.message}
+                            />
+                          )}
                         />
                       </CustomListItem>
                     </ListItem>
