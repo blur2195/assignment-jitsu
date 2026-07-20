@@ -1,40 +1,20 @@
-import { Box, Button, Grid, List, ListItem, Menu, MenuItem, Modal, Stack, TextField } from "@mui/material";
+import { Box, Button, List, ListItem, Menu, MenuItem, Modal, Stack, TextField } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import { SHIPMENT_STATUS, SHIPMENT_STATUS_OPTIONS } from "../../constants";
-import { shipmentServices } from "../../services/shipments";
-import { Shipment } from "../../store/models";
+import { CustomListItem } from "components";
+import { SHIPMENT_STATUS, SHIPMENT_STATUS_OPTIONS } from "config";
+import { shipmentServices } from "services";
+import { compactModalStyle, modalStyle } from "styles/modal";
+import { Shipment } from "types";
 import AssignModal from "./assign";
-
-const modalStyle = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 600,
-  maxHeight: "80%",
-  height: "80%",
-  overflowY: "auto",
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-};
-
-const assignModalStyle = {
-  ...modalStyle,
-  width: 400,
-  height: 400,
-  p: 2,
-};
 
 interface ShipmentDetailModalProps {
   id: string | null;
-  onClose?: Function;
-  forceReloadCb?: Function;
+  onClose?: () => void;
+  forceReloadCb?: () => void;
   readOnly?: boolean;
   shipmentCords?: [number, number][];
 }
@@ -46,15 +26,6 @@ interface RecenterMapProps {
 }
 
 const icon = L.icon({ iconUrl: "/images/marker.svg", iconSize: [30, 30] });
-
-const CustomListItem = ({ title, children }: any) => {
-  return (
-    <Grid container sx={{ width: "100%" }}>
-      <Grid size={3} sx={{ display: "flex", alignItems: "center" }}>{title}</Grid>
-      <Grid size={9}>{children}</Grid>
-    </Grid>
-  )
-};
 
 const RecenterAutomatically = ({ lat, lng, shipmentCords }: RecenterMapProps) => {
   const map = useMap();
@@ -68,7 +39,6 @@ const RecenterAutomatically = ({ lat, lng, shipmentCords }: RecenterMapProps) =>
       L.marker(cord, { icon }).addTo(map);
     });
     const polyline = L.polyline(shipmentCords, { color: "lime" }).addTo(map);
-    map.dragging.disable();
     map.fitBounds(polyline.getBounds(), {
       padding: [50, 50],
     });
@@ -162,7 +132,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
   const handleSaveNewStatus = async (
     newStatus: keyof typeof SHIPMENT_STATUS,
     shouldRemoveAssignment: boolean = false,
-    successCb?: Function,
+    successCb?: () => void,
   ) => {
     if (id) {
       try {
@@ -317,7 +287,7 @@ const ShipmentDetailModal = ({ id, onClose, forceReloadCb, readOnly, shipmentCor
         open={assignOpen}
         id={id}
         onClose={() => setAssignOpen(false)}
-        style={assignModalStyle}
+        style={compactModalStyle}
         successCb={() => {
           refetchData();
           setAssignOpen(false);

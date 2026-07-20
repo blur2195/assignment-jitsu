@@ -1,18 +1,19 @@
 import { AddCircle, Delete, Info } from "@mui/icons-material";
-import { Box, CircularProgress, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
+import { Box, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useState } from "react";
-import { ASSIGNMENT_STATUS } from "../../constants";
-import useFilter from "../../hooks/filter.hook";
-import { assignmentServices } from "../../services";
-import { Assignment, SearchParams } from "../../store/models";
+import { useCallback, useEffect, useState } from "react";
+import { LoadingOverlay } from "components";
+import { ASSIGNMENT_STATUS } from "config";
+import { useFilter } from "hooks";
+import { assignmentServices } from "services";
+import { Assignment, SearchParams } from "types";
 
 interface AssignmentListProps {
-  onRowSelect: Function;
-  onClickAdd: Function;
+  onRowSelect: (id: string | null) => void;
+  onClickAdd: () => void;
   selectedId: string | null;
   forceReload: boolean;
-  forceReloadCb: Function;
+  forceReloadCb: () => void;
 }
 
 const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceReloadCb }: AssignmentListProps) => {
@@ -24,9 +25,9 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
   const defaultFilter = {
     status: ASSIGNMENT_STATUS.OPEN,
     search: null,
-  }
+  };
 
-  const fetchData = async (params: SearchParams) => {
+  const fetchData = useCallback(async (params: SearchParams) => {
     try {
       setLoading(true);
       const searchParams = {
@@ -34,7 +35,7 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
         "_limit": params.pageSize,
         "label_like": params.search,
         "status": params.status,
-      }
+      };
       const res = await assignmentServices.getAll(searchParams);
       if (res) {
         setRows(res.data);
@@ -44,7 +45,7 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
     } catch (error) {
       setLoading(false);
     }
-  };
+  }, []);
 
   const {
     filterParams,
@@ -72,7 +73,7 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
         setLoading(true);
         const status = await assignmentServices.deleteById(id);
         if (status === 200) {
-          handlePageChange(null, filterParams.page);
+          handlePageChange(null, Number(filterParams.page));
           setOpen(true);
         }
         setLoading(false);
@@ -83,13 +84,13 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
   };
 
   const handleForceReload = async () => {
-    handlePageChange(null, filterParams.page);
+    handlePageChange(null, Number(filterParams.page));
     forceReloadCb();
   };
 
   useEffect(() => {
     if (forceReload) handleForceReload();
-  }, [forceReload])
+  }, [forceReload]);
 
   return (
     <>
@@ -109,7 +110,7 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
                 <MenuItem key={ASSIGNMENT_STATUS.OPEN} value={ASSIGNMENT_STATUS.OPEN}>Open</MenuItem>
                 <MenuItem key={ASSIGNMENT_STATUS.COMPLETED} value={ASSIGNMENT_STATUS.COMPLETED}>Completed</MenuItem>
               </TextField>
-              <IconButton onClick={() => onClickAdd()}><AddCircle /></IconButton>
+              <IconButton onClick={onClickAdd}><AddCircle /></IconButton>
             </Stack>
           </Grid>
           <Grid size={6}>
@@ -124,23 +125,7 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
           </Grid>
         </Grid>
         <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
-          {loading && (
-            <Box sx={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              zIndex: 999,
-              bgcolor: "gray",
-              opacity: 0.5,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}>
-              <CircularProgress />
-            </Box>
-          )}
+          {loading && <LoadingOverlay />}
           <TableContainer sx={{ height: "100%" }}>
             <Table stickyHeader sx={{ maxHeight: "100%", overflow: "auto" }}>
               <TableHead>
@@ -152,28 +137,26 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
                 </TableRow>
               </TableHead>
               <TableBody>
-                <>
-                  {rows?.map((row) => (
-                    <TableRow
-                      hover
-                      key={row.id}
-                      sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
-                      selected={row.id === selectedId}
-                    >
-                      <TableCell>{row.label}</TableCell>
-                      <TableCell align="center">{row.clients?.join(", ")}</TableCell>
-                      <TableCell align="center">{row.shipment_count}</TableCell>
-                      <TableCell align="center">
-                        <IconButton onClick={() => onRowDetailClick(row.id)}>
-                          <Info />
-                        </IconButton>
-                        <IconButton onClick={() => onRowDeleteClick(row.id)}>
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </>
+                {rows?.map((row) => (
+                  <TableRow
+                    hover
+                    key={row.id}
+                    sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
+                    selected={row.id === selectedId}
+                  >
+                    <TableCell>{row.label}</TableCell>
+                    <TableCell align="center">{row.clients?.join(", ")}</TableCell>
+                    <TableCell align="center">{row.shipment_count}</TableCell>
+                    <TableCell align="center">
+                      <IconButton onClick={() => onRowDetailClick(row.id)}>
+                        <Info />
+                      </IconButton>
+                      <IconButton onClick={() => onRowDeleteClick(row.id)}>
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -183,8 +166,8 @@ const AssignmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forc
             rowsPerPageOptions={[25, 100]}
             component={"div"}
             count={totalRow || 0}
-            rowsPerPage={filterParams.pageSize}
-            page={filterParams.page}
+            rowsPerPage={Number(filterParams.pageSize)}
+            page={Number(filterParams.page)}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handlePageSizeChange}
           />

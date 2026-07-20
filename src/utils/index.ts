@@ -1,5 +1,5 @@
-export const convertParamsToQueryString = (params?: any) => {
-  if (params === null) return "";
+export const convertParamsToQueryString = (params?: Record<string, unknown>) => {
+  if (!params) return "";
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {

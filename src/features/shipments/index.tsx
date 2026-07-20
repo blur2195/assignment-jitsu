@@ -1,35 +1,39 @@
-import { useState } from "react";
+import { useEntityPage } from "hooks";
 import AddModal from "./add";
 import ShipmentDetailModal from "./detail";
 import ShipmentList from "./list";
 
 const Shipments = () => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [openModal, setOpenModal] = useState<boolean>(false);
-  const [forceReload, setForceReload] = useState<boolean>(false);
-
-  const onRowSelect = (id: string | null) => {
-    setSelectedId(id);
-  };
+  const {
+    selectedId,
+    openModal,
+    forceReload,
+    onRowSelect,
+    openAddModal,
+    closeAddModal,
+    closeDetail,
+    triggerReload,
+    resetReload,
+  } = useEntityPage();
 
   return (
     <>
       <ShipmentList
         onRowSelect={onRowSelect}
         selectedId={selectedId}
-        onClickAdd={() => setOpenModal(true)}
+        onClickAdd={openAddModal}
         forceReload={forceReload}
-        forceReloadCb={() => setForceReload(false)}
+        forceReloadCb={resetReload}
       />
       <ShipmentDetailModal
         id={selectedId}
-        onClose={() => setSelectedId(null)}
-        forceReloadCb={() => setForceReload(true)}
+        onClose={closeDetail}
+        forceReloadCb={triggerReload}
       />
       <AddModal
         openModal={openModal}
-        closeModal={() => setOpenModal(false)}
-        forceReloadCb={() => setForceReload(true)}
+        closeModal={closeAddModal}
+        forceReloadCb={triggerReload}
       />
     </>
   );

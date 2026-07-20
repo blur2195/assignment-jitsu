@@ -1,43 +1,18 @@
-import { Box, Grid, List, ListItem, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
+import { Box, List, ListItem, Modal, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { assignmentServices } from "../../services";
-import { shipmentServices } from "../../services/shipments";
-import { Assignment, Shipment } from "../../store/models";
+import { CustomListItem } from "components";
+import { assignmentServices, shipmentServices } from "services";
+import { modalStyle } from "styles/modal";
+import { Assignment, Shipment } from "types";
 import ShipmentDetailModal from "../shipments/detail";
-
-const modalStyle = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 600,
-  maxHeight: "80%",
-  height: "80%",
-  overflowY: "auto",
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-};
 
 interface AssignmentDetailModalProps {
   id: string | null;
-  onClose?: Function;
-  forceReloadCb?: Function;
+  onClose?: () => void;
+  forceReloadCb?: () => void;
 }
 
-
-const CustomListItem = ({ title, children }: any) => {
-  return (
-    <Grid container sx={{ width: "100%" }}>
-      <Grid size={3} sx={{ display: "flex", alignItems: "center" }}>{title}</Grid>
-      <Grid size={9}>{children}</Grid>
-    </Grid>
-  )
-};
-
-const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailModalProps) => {
-  const [loading, setLoading] = useState<boolean>(false);
+const AssignmentDetailModal = ({ id, onClose }: AssignmentDetailModalProps) => {
   const [data, setData] = useState<Assignment | null>(null);
   const [assignedList, setAssignedList] = useState<Shipment[]>([]);
   const [totalAssigned, setTotalAssigned] = useState<number>(0);
@@ -46,7 +21,6 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
   const fetchData = async (id: string | null) => {
     if (id) {
       try {
-        setLoading(true);
         const res = await assignmentServices.getById(id);
         if (res) setData(res);
         const assignedListRes = await shipmentServices.getByAssignmentId(id);
@@ -54,9 +28,7 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
           setAssignedList(assignedListRes);
           setTotalAssigned(assignedListRes.length);
         };
-        setLoading(false);
       } catch (error) {
-        setLoading(false);
       }
     }
   };
@@ -86,7 +58,7 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
                       </CustomListItem>
                     </ListItem>
                     <ListItem disablePadding>
-                      {totalAssigned && (
+                      {!!totalAssigned && (
                         <TableContainer sx={{ height: "100%" }}>
                           <Table stickyHeader sx={{ maxHeight: "100%", overflow: "auto" }}>
                             <TableHead>
@@ -96,19 +68,17 @@ const AssignmentDetailModal = ({ id, onClose, forceReloadCb }: AssignmentDetailM
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              <>
-                                {assignedList.map((row) => (
-                                  <TableRow
-                                    hover
-                                    key={row.id}
-                                    sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
-                                    onClick={() => setSelectedId(row.id)}
-                                  >
-                                    <TableCell>{row.label}</TableCell>
-                                    <TableCell>{row.status}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </>
+                              {assignedList.map((row) => (
+                                <TableRow
+                                  hover
+                                  key={row.id}
+                                  sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
+                                  onClick={() => setSelectedId(row.id)}
+                                >
+                                  <TableCell>{row.label}</TableCell>
+                                  <TableCell>{row.status}</TableCell>
+                                </TableRow>
+                              ))}
                             </TableBody>
                           </Table>
                         </TableContainer>

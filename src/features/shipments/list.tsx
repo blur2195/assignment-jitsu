@@ -1,19 +1,20 @@
 import { AddCircle, Delete, Info } from "@mui/icons-material";
-import { Box, CircularProgress, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
+import { Box, Grid, IconButton, MenuItem, Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from "@mui/material";
 import dayjs from "dayjs";
 import { useConfirm } from "material-ui-confirm";
-import { useEffect, useState } from "react";
-import { SHIPMENT_FILTER_TYPE, SHIPMENT_STATUS } from "../../constants";
-import useFilter from "../../hooks/filter.hook";
-import { shipmentServices } from "../../services/shipments";
-import { SearchParams, Shipment } from "../../store/models";
+import { useCallback, useEffect, useState } from "react";
+import { LoadingOverlay } from "components";
+import { SHIPMENT_FILTER_TYPE, SHIPMENT_STATUS } from "config";
+import { useFilter } from "hooks";
+import { shipmentServices } from "services";
+import { SearchParams, Shipment } from "types";
 
 interface ShipmentListProps {
-  onRowSelect: Function;
-  onClickAdd: Function;
+  onRowSelect: (id: string | null) => void;
+  onClickAdd: () => void;
   selectedId: string | null;
   forceReload: boolean;
-  forceReloadCb: Function;
+  forceReloadCb: () => void;
 }
 
 const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceReloadCb }: ShipmentListProps) => {
@@ -26,9 +27,9 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
     status: SHIPMENT_STATUS.OPEN,
     search: null,
     searchType: SHIPMENT_FILTER_TYPE.LABEL,
-  }
+  };
 
-  const fetchData = async (params: SearchParams) => {
+  const fetchData = useCallback(async (params: SearchParams) => {
     try {
       setLoading(true);
       const searchParams = {
@@ -36,7 +37,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
         "_limit": params.pageSize,
         [params.searchType + "_like"]: params.search,
         "status": params.status,
-      }
+      };
       const res = await shipmentServices.getAll(searchParams);
       if (res) {
         setRows(res.data);
@@ -46,7 +47,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
     } catch (error) {
       setLoading(false);
     }
-  };
+  }, []);
 
   const {
     filterParams,
@@ -74,7 +75,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
         setLoading(true);
         const status = await shipmentServices.deleteById(id);
         if (status === 200) {
-          handlePageChange(null, filterParams.page);
+          handlePageChange(null, Number(filterParams.page));
           setOpen(true);
         }
         setLoading(false);
@@ -85,13 +86,13 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
   };
 
   const handleForceReload = async () => {
-    handlePageChange(null, filterParams.page);
+    handlePageChange(null, Number(filterParams.page));
     forceReloadCb();
   };
 
   useEffect(() => {
     if (forceReload) handleForceReload();
-  }, [forceReload])
+  }, [forceReload]);
 
   return (
     <>
@@ -112,7 +113,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
                 <MenuItem key={SHIPMENT_STATUS.IN_TRANSIT} value={SHIPMENT_STATUS.IN_TRANSIT}>In transit</MenuItem>
                 <MenuItem key={SHIPMENT_STATUS.DELIVERED} value={SHIPMENT_STATUS.DELIVERED}>Delivered</MenuItem>
               </TextField>
-              <IconButton onClick={() => onClickAdd()}><AddCircle /></IconButton>
+              <IconButton onClick={onClickAdd}><AddCircle /></IconButton>
             </Stack>
           </Grid>
           <Grid size={6}>
@@ -141,23 +142,7 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
           </Grid>
         </Grid>
         <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
-          {loading && (
-            <Box sx={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              zIndex: 999,
-              bgcolor: "gray",
-              opacity: 0.5,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}>
-              <CircularProgress />
-            </Box>
-          )}
+          {loading && <LoadingOverlay />}
           <TableContainer sx={{ height: "100%" }}>
             <Table stickyHeader sx={{ maxHeight: "100%", overflow: "auto" }}>
               <TableHead>
@@ -169,28 +154,26 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
                 </TableRow>
               </TableHead>
               <TableBody>
-                <>
-                  {rows.map((row) => (
-                    <TableRow
-                      hover
-                      key={row.id}
-                      sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
-                      selected={row.id === selectedId}
-                    >
-                      <TableCell>{row.label}</TableCell>
-                      <TableCell align="center">{row.client_name}</TableCell>
-                      <TableCell align="center">{dayjs(row.arrival_date).format("DD/MM/YYYY-HH:mm:ss")}</TableCell>
-                      <TableCell align="center">
-                        <IconButton onClick={() => onRowDetailClick(row.id)}>
-                          <Info />
-                        </IconButton>
-                        <IconButton onClick={() => onRowDeleteClick(row.id)}>
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </>
+                {rows.map((row) => (
+                  <TableRow
+                    hover
+                    key={row.id}
+                    sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer" }}
+                    selected={row.id === selectedId}
+                  >
+                    <TableCell>{row.label}</TableCell>
+                    <TableCell align="center">{row.client_name}</TableCell>
+                    <TableCell align="center">{dayjs(row.arrival_date).format("DD/MM/YYYY-HH:mm:ss")}</TableCell>
+                    <TableCell align="center">
+                      <IconButton onClick={() => onRowDetailClick(row.id)}>
+                        <Info />
+                      </IconButton>
+                      <IconButton onClick={() => onRowDeleteClick(row.id)}>
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -200,8 +183,8 @@ const ShipmentList = ({ onRowSelect, selectedId, onClickAdd, forceReload, forceR
             rowsPerPageOptions={[25, 100]}
             component={"div"}
             count={totalRow || 0}
-            rowsPerPage={filterParams.pageSize}
-            page={filterParams.page}
+            rowsPerPage={Number(filterParams.pageSize)}
+            page={Number(filterParams.page)}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handlePageSizeChange}
           />
