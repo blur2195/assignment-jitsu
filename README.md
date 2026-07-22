@@ -5,6 +5,4 @@ After done installing dependencies, use:
 # `npm start`
 to start development server
 
-To use mockData, use json-server:
-# `npm install -g json-server`
-# `json-server --watch mockData/shipments.json --port 3001`
+Mock data is faked through axios. In development, create/update/delete are written to `src/mockData/shipments.json` via the dev server.

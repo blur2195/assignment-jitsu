@@ -1,9 +1,10 @@
 import axios from "axios";
+import { mockAxiosAdapter } from "mock/axiosAdapter";
 
 export const axiosClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  adapter: mockAxiosAdapter,
   headers: {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
 });
 

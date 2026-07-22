@@ -1,15 +1,4 @@
 {
-  "statuses": [
-    {
-      "id": "OPEN"
-    },
-    {
-      "id": "IN_TRANSIT"
-    },
-    {
-      "id": "DELIVERED"
-    }
-  ],
   "shipments": [
     {
       "id": "shp_001",
@@ -1171,17 +1160,6 @@
       "id": "ddR9i4M"
     },
     {
-      "label": "123",
-      "client_name": "abc",
-      "status": "OPEN",
-      "lat": "1",
-      "lng": "1",
-      "arrival_date": "2026-07-13T08:51:58.418Z",
-      "delivery_by_date": "2026-07-13T08:51:58.419Z",
-      "warehouse_id": "1",
-      "id": "YB2Z-DQ"
-    },
-    {
       "label": "new ship",
       "client_name": "abc",
       "status": "IN_TRANSIT",
@@ -1235,6 +1213,17 @@
       "shipment_count": 0,
       "clients": [],
       "id": "9DiqsoJ"
+    }
+  ],
+  "statuses": [
+    {
+      "id": "OPEN"
+    },
+    {
+      "id": "IN_TRANSIT"
+    },
+    {
+      "id": "DELIVERED"
     }
   ]
 }
